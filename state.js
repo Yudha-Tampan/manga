@@ -1,40 +1,81 @@
-// CLARA STATE MANAGEMENT - PROFESSIONAL
+// CLARA STATE - Minimal untuk localStorage
 
 class ClaraState {
-  constructor() {
-    this.data = {
-      user: {
-        bookmarks: JSON.parse(localStorage.getItem('clara_bookmarks') || '[]'),
-        history: JSON.parse(localStorage.getItem('clara_history') || '[]'),
-        progress: JSON.parse(localStorage.getItem('clara_progress') || '{}'),
-        theme: localStorage.getItem('clara_theme') || 'dark'
-      },
-      
-      manga: {
-        latest: [],
-        trending: [],
-        popular: [],
-        detail: null,
-        chapters: []
-      },
-      
-      ui: {
-        loading: false,
-        page: 'home',
-        search: '',
-        toast: [],
-        modal: null
-      }
-    };
+    constructor() {
+        this.data = {
+            bookmarks: JSON.parse(localStorage.getItem('clara_bookmarks') || '[]'),
+            history: JSON.parse(localStorage.getItem('clara_history') || '[]'),
+            progress: JSON.parse(localStorage.getItem('clara_progress') || '{}')
+        };
+    }
     
-    this.listeners = [];
-    this.init();
-  }
-  
-  init() {
-    document.body.className = this.data.user.theme;
-  }
-  
+    // Bookmarks
+    getBookmarks() {
+        return this.data.bookmarks;
+    }
+    
+    addBookmark(manga) {
+        if (!this.data.bookmarks.some(b => b.id === manga.id)) {
+            this.data.bookmarks.push(manga);
+            localStorage.setItem('clara_bookmarks', JSON.stringify(this.data.bookmarks));
+            this.showToast('❤️ Added to bookmarks');
+        }
+    }
+    
+    removeBookmark(mangaId) {
+        this.data.bookmarks = this.data.bookmarks.filter(b => b.id !== mangaId);
+        localStorage.setItem('clara_bookmarks', JSON.stringify(this.data.bookmarks));
+        this.showToast('Removed from bookmarks');
+    }
+    
+    isBookmarked(mangaId) {
+        return this.data.bookmarks.some(b => b.id === mangaId);
+    }
+    
+    // History
+    addToHistory(manga, chapter) {
+        this.data.history = [
+            { manga, chapter, readAt: Date.now() },
+            ...this.data.history.filter(h => h.manga.id !== manga.id)
+        ].slice(0, 30);
+        localStorage.setItem('clara_history', JSON.stringify(this.data.history));
+    }
+    
+    getHistory() {
+        return this.data.history;
+    }
+    
+    // Progress
+    saveProgress(mangaId, chapterId, page) {
+        this.data.progress[mangaId] = { chapterId, page, timestamp: Date.now() };
+        localStorage.setItem('clara_progress', JSON.stringify(this.data.progress));
+    }
+    
+    getProgress(mangaId) {
+        return this.data.progress[mangaId];
+    }
+    
+    // Toast sederhana
+    showToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'toast info';
+        toast.innerHTML = `<i class="fas fa-info-circle"></i><span>${message}</span>`;
+        
+        const container = document.getElementById('toast-container');
+        container.appendChild(toast);
+        
+        setTimeout(() => toast.remove(), 3000);
+    }
+    
+    // Clear all
+    clearAll() {
+        localStorage.clear();
+        this.data = { bookmarks: [], history: [], progress: {} };
+        this.showToast('All data cleared');
+    }
+}
+
+window.State = new ClaraState();  
   get(path) {
     return path.split('.').reduce((obj, key) => obj?.[key], this.data);
   }
