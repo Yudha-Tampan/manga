@@ -1,25 +1,18 @@
-// CLARA MAIN APP - PROFESSIONAL
+// CLARA APP V4 - ZERO LOADING ANIMATION
+// Data langsung muncul, gak pake skeleton
 
 class ClaraApp {
     constructor() {
-        this.currentPage = 1;
-        this.filters = {};
         this.init();
     }
     
     async init() {
+        this.renderLayout();
+        await this.loadHomeData(); // Langsung load data, gak pake loading
         this.setupEventListeners();
-        this.setupRouter();
-        this.setupStateSubscription();
-        
-        // Render navbar
-        this.renderNavbar();
-        
-        // Load initial page
-        await this.loadPage(window.location.pathname);
     }
     
-    renderNavbar() {
+    renderLayout() {
         const app = document.getElementById('app');
         app.innerHTML = `
             <!-- Navbar -->
@@ -30,11 +23,185 @@ class ClaraApp {
                             <span class="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-500">Clara</span>
                             <span class="text-white">.manga</span>
                         </h1>
+                    </div>
+                    
+                    <div class="flex items-center gap-3">
+                        <div class="relative">
+                            <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                            <input type="text" 
+                                   id="search-input"
+                                   placeholder="Search manga..." 
+                                   class="bg-white/5 border border-white/10 rounded-full pl-10 pr-4 py-2 w-64 focus:outline-none focus:border-pink-500">
+                        </div>
+                    </div>
+                </div>
+            </nav>
+            
+            <!-- Main Content - Langsung diisi nanti -->
+            <main id="main-content" class="container mx-auto px-4 py-6"></main>
+        `;
+    }
+    
+    async loadHomeData() {
+        const main = document.getElementById('main-content');
+        
+        // Langsung fetch data tanpa loading
+        const [latest, trending] = await Promise.all([
+            API.getLatestManga(),
+            API.getLatestManga() // Buat trending, nanti diacak
+        ]);
+        
+        // Randomize untuk trending
+        const trendingManga = [...latest].sort(() => Math.random() - 0.5).slice(0, 10);
+        
+        main.innerHTML = `
+            <!-- Hero Section -->
+            <div class="bg-gradient-to-r from-pink-500/20 to-purple-500/20 rounded-3xl p-8 mb-8">
+                <h1 class="text-3xl font-bold mb-2">Welcome to Clara 🌸</h1>
+                <p class="text-gray-300">Baca manga gratis, update setiap hari</p>
+            </div>
+            
+            <!-- Trending Now -->
+            <section class="mb-8">
+                <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                    <i class="fas fa-fire text-pink-500"></i> Trending Now
+                </h2>
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    ${trendingManga.map(m => this.renderMangaCard(m)).join('')}
+                </div>
+            </section>
+            
+            <!-- Latest Updates -->
+            <section>
+                <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                    <i class="fas fa-clock text-pink-500"></i> Latest Updates
+                </h2>
+                <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+                    ${latest.map(m => this.renderMangaCard(m)).join('')}
+                </div>
+            </section>
+        `;
+    }
+    
+    renderMangaCard(manga) {
+        return `
+            <div class="cursor-pointer hover:scale-105 transition-transform" 
+                 onclick="app.showMangaDetail('${manga.id}')">
+                <img src="${manga.cover}" 
+                     class="w-full aspect-[3/4] object-cover rounded-xl"
+                     onerror="this.src='https://via.placeholder.com/300x400/1a1a1a/ec4899?text=Error'">
+                <h3 class="font-semibold mt-2 text-sm line-clamp-2">${manga.title}</h3>
+                <div class="flex items-center justify-between mt-1 text-xs text-gray-400">
+                    <span>${manga.year}</span>
+                    <span>⭐ ${manga.rating}</span>
+                </div>
+            </div>
+        `;
+    }
+    
+    async showMangaDetail(id) {
+        const main = document.getElementById('main-content');
+        
+        // Langsung fetch detail
+        const { manga, chapters } = await API.getMangaDetail(id);
+        
+        main.innerHTML = `
+            <div class="max-w-4xl mx-auto">
+                <button onclick="app.loadHomeData()" class="mb-4 text-pink-500">
+                    ← Back
+                </button>
+                
+                <div class="bg-white/5 rounded-2xl p-6">
+                    <div class="flex gap-6">
+                        <img src="${manga.cover}" class="w-48 h-64 object-cover rounded-xl">
                         
-                        <div class="hidden md:flex items-center gap-1">
-                            <a href="/" class="nav-link px-4 py-2 rounded-full hover:bg-white/5 transition" data-route="/">Home</a>
-                            <a href="/trending" class="nav-link px-4 py-2 rounded-full hover:bg-white/5 transition" data-route="/trending">Trending</a>
-                            <a href="/popular" class="nav-link px-4 py-2 rounded-full hover:bg-white/5 transition" data-route="/popular">Popular</a>
+                        <div class="flex-1">
+                            <h1 class="text-2xl font-bold mb-2">${manga.title}</h1>
+                            <div class="flex gap-2 mb-4">
+                                ${manga.tags.slice(0, 3).map(t => `
+                                    <span class="bg-pink-500/20 text-pink-500 px-3 py-1 rounded-full text-xs">${t}</span>
+                                `).join('')}
+                            </div>
+                            <p class="text-gray-300 mb-4">${manga.description || 'No description'}</p>
+                            <div class="flex gap-4 text-sm">
+                                <span>📅 ${manga.year}</span>
+                                <span>📖 ${manga.status}</span>
+                                <span>⭐ ${manga.rating}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h2 class="text-xl font-bold mt-6 mb-3">Chapters</h2>
+                    <div class="space-y-2 max-h-96 overflow-y-auto">
+                        ${chapters.map(ch => `
+                            <div class="bg-white/5 p-3 rounded-lg hover:bg-white/10 cursor-pointer"
+                                 onclick="app.showChapter('${ch.id}', '${id}')">
+                                <span class="font-semibold">${ch.title}</span>
+                                <span class="text-sm text-gray-400 ml-2">${ch.pages} pages</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    async showChapter(chapterId, mangaId) {
+        const main = document.getElementById('main-content');
+        
+        // Langsung fetch images
+        const images = await API.getChapterImages(chapterId);
+        
+        main.innerHTML = `
+            <div class="max-w-3xl mx-auto">
+                <button onclick="app.showMangaDetail('${mangaId}')" class="mb-4 text-pink-500">
+                    ← Back to Manga
+                </button>
+                
+                <div class="space-y-2">
+                    ${images.map(img => `
+                        <img src="${img.url}" 
+                             class="w-full rounded-lg"
+                             onerror="this.src='https://via.placeholder.com/800x1200/2a2a2a/ec4899?text=Error'">
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    setupEventListeners() {
+        // Search dengan debounce
+        let timeout;
+        document.getElementById('search-input')?.addEventListener('input', (e) => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                const query = e.target.value;
+                if (query.length >= 2) {
+                    this.searchManga(query);
+                }
+            }, 300);
+        });
+    }
+    
+    async searchManga(query) {
+        const main = document.getElementById('main-content');
+        
+        // Langsung search
+        const results = await API.searchManga(query);
+        
+        main.innerHTML = `
+            <h2 class="text-xl font-bold mb-4">Search: "${query}"</h2>
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+                ${results.map(m => this.renderMangaCard(m)).join('')}
+            </div>
+        `;
+    }
+}
+
+// Start app
+document.addEventListener('DOMContentLoaded', () => {
+    window.app = new ClaraApp();
+});                            <a href="/popular" class="nav-link px-4 py-2 rounded-full hover:bg-white/5 transition" data-route="/popular">Popular</a>
                             <a href="/latest" class="nav-link px-4 py-2 rounded-full hover:bg-white/5 transition" data-route="/latest">Latest</a>
                         </div>
                     </div>
