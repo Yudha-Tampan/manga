@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Clara Manga - Baca Manga Gratis & Update Terbaru</title>
+    
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Meta Tags -->
+    <meta name="description" content="Clara Manga - Baca ribuan manga gratis dengan update terbaru setiap hari. Kualitas tinggi, tanpa iklan mengganggu.">
+    <meta name="keywords" content="manga, baca manga, manga online, manga gratis, manga terbaru">
+    <meta property="og:title" content="Clara Manga">
+    <meta property="og:description" content="Baca manga gratis update setiap hari">
+    <meta property="og:image" content="https://via.placeholder.com/1200x630/ec4899/ffffff?text=Clara+Manga">
+</head>
+<body class="bg-[#0B0E14] text-white font-['Plus_Jakarta_Sans']">
+    <div id="app"></div>
+    
+    <!-- Components -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+    <div id="progress-bar" class="fixed top-0 left-0 h-1 bg-gradient-to-r from-pink-500 to-purple-600 z-50 transition-all duration-300" style="width:0%"></div>
+    <button id="back-to-top" class="fixed bottom-20 right-4 bg-pink-500 text-white p-3 rounded-full shadow-lg hover:bg-pink-600 transition-all z-40 hidden">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+
+    <!-- Scripts -->
+    <script src="config.js"></script>
+    <script src="state.js"></script>
+    <script src="api.js"></script>
+    <script src="components.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
