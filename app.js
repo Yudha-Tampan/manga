@@ -1,40 +1,549 @@
-// CLARA APP V4 - ZERO LOADING ANIMATION
-// Data langsung muncul, gak pake skeleton
+// CLARA APP V4 - TANPA LOADING, LANGSUNG RENDER
 
 class ClaraApp {
     constructor() {
+        this.currentPage = 1;
         this.init();
     }
     
     async init() {
         this.renderLayout();
-        await this.loadHomeData(); // Langsung load data, gak pake loading
+        await this.loadHome(); // Langsung load tanpa loading screen
         this.setupEventListeners();
     }
     
     renderLayout() {
         const app = document.getElementById('app');
         app.innerHTML = `
-            <!-- Navbar -->
-            <nav class="sticky top-0 z-50 glass-premium mx-4 my-2 px-6 py-3">
-                <div class="flex items-center justify-between">
+            <!-- Navbar Premium -->
+            <nav class="navbar">
+                <div class="navbar-container">
                     <div class="flex items-center gap-8">
-                        <h1 class="text-2xl font-bold">
-                            <span class="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-500">Clara</span>
-                            <span class="text-white">.manga</span>
+                        <h1 class="logo">
+                            <span class="logo-clara">Clara</span>
+                            <span class="logo-manga">.manga</span>
                         </h1>
+                        
+                        <div class="nav-links">
+                            <a href="/" class="nav-link active" data-route="/">Home</a>
+                            <a href="/trending" class="nav-link" data-route="/trending">Trending</a>
+                            <a href="/popular" class="nav-link" data-route="/popular">Popular</a>
+                            <a href="/latest" class="nav-link" data-route="/latest">Latest</a>
+                        </div>
                     </div>
                     
                     <div class="flex items-center gap-3">
-                        <div class="relative">
-                            <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                        <!-- Search Bar -->
+                        <div class="search-container">
+                            <i class="fas fa-search search-icon"></i>
                             <input type="text" 
                                    id="search-input"
                                    placeholder="Search manga..." 
-                                   class="bg-white/5 border border-white/10 rounded-full pl-10 pr-4 py-2 w-64 focus:outline-none focus:border-pink-500">
+                                   class="search-input">
+                        </div>
+                        
+                        <!-- Action Buttons -->
+                        <div class="relative">
+                            <a href="/bookmarks" class="action-btn" data-route="/bookmarks">
+                                <i class="fas fa-heart"></i>
+                            </a>
+                            <span id="bookmark-count" class="badge hidden">0</span>
+                        </div>
+                        
+                        <a href="/history" class="action-btn" data-route="/history">
+                            <i class="fas fa-clock"></i>
+                        </a>
+                        
+                        <a href="/settings" class="action-btn" data-route="/settings">
+                            <i class="fas fa-cog"></i>
+                        </a>
+                    </div>
+                </div>
+            </nav>
+            
+            <!-- Main Content -->
+            <main id="main-content" class="container"></main>
+            
+            <!-- Bottom Navigation (Mobile) -->
+            <div class="bottom-nav">
+                <a href="/" data-route="/"><i class="fas fa-home"></i><span>Home</span></a>
+                <a href="/trending" data-route="/trending"><i class="fas fa-fire"></i><span>Trending</span></a>
+                <a href="/latest" data-route="/latest"><i class="fas fa-clock"></i><span>Latest</span></a>
+                <a href="/bookmarks" data-route="/bookmarks"><i class="fas fa-heart"></i><span>Saved</span></a>
+                <a href="/settings" data-route="/settings"><i class="fas fa-user"></i><span>Profile</span></a>
+            </div>
+        `;
+        
+        // Update bookmark badge
+        this.updateBookmarkBadge();
+    }
+    
+    async loadHome() {
+        const main = document.getElementById('main-content');
+        
+        // Fetch data langsung - tanpa loading
+        const [latest, trending] = await Promise.all([
+            API.getLatestManga(1),
+            API.getLatestManga(1)
+        ]);
+        
+        // Random untuk trending
+        const trendingManga = [...latest.manga].sort(() => Math.random() - 0.5).slice(0, 10);
+        
+        main.innerHTML = `
+            <!-- Hero Section -->
+            <div class="hero">
+                <div class="hero-content">
+                    <h1 class="hero-title">Welcome to <span class="text-gradient">Clara</span> 🌸</h1>
+                    <p class="hero-subtitle">Baca ribuan manga gratis, update setiap hari dengan kualitas terbaik</p>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value">1000+</div>
+                            <div class="stat-label">Manga</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">50k+</div>
+                            <div class="stat-label">Chapters</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">24/7</div>
+                            <div class="stat-label">Updates</div>
                         </div>
                     </div>
                 </div>
+            </div>
+            
+            <!-- Trending Section -->
+            <section class="mb-8">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-fire"></i> Trending Now
+                    </h2>
+                    <a href="/trending" class="view-all" data-route="/trending">View All →</a>
+                </div>
+                
+                <div class="manga-grid">
+                    ${trendingManga.map(m => this.renderMangaCard(m)).join('')}
+                </div>
+            </section>
+            
+            <!-- Latest Updates -->
+            <section>
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-clock"></i> Latest Updates
+                    </h2>
+                    <a href="/latest" class="view-all" data-route="/latest">View All →</a>
+                </div>
+                
+                <div class="manga-grid">
+                    ${latest.manga.slice(0, 12).map(m => this.renderMangaCard(m)).join('')}
+                </div>
+            </section>
+        `;
+    }
+    
+    renderMangaCard(manga) {
+        const isBookmarked = State.isBookmarked(manga.id);
+        
+        return `
+            <div class="manga-card" data-id="${manga.id}">
+                <div class="manga-image-container">
+                    <img src="${manga.cover}" 
+                         alt="${manga.title}"
+                         class="manga-image"
+                         loading="lazy"
+                         onerror="this.src='https://via.placeholder.com/300x400/1a1a1a/ec4899?text=Error'">
+                    
+                    <div class="manga-badge">
+                        <i class="fas fa-star"></i> ${manga.rating}
+                    </div>
+                    
+                    <div class="manga-bookmark ${isBookmarked ? 'active' : ''}" 
+                         onclick="event.stopPropagation(); window.app.toggleBookmark('${manga.id}')">
+                        <i class="fas fa-${isBookmarked ? 'heart' : 'heart'}"></i>
+                    </div>
+                    
+                    <div class="status-badge ${manga.status}">
+                        ${manga.status === 'ongoing' ? '📖 Ongoing' : '✅ Completed'}
+                    </div>
+                </div>
+                
+                <div class="manga-info">
+                    <h3 class="manga-title">${manga.title}</h3>
+                    
+                    <div class="manga-meta">
+                        <span><i class="far fa-calendar"></i> ${manga.year}</span>
+                        <span><i class="far fa-eye"></i> ${Math.floor(Math.random() * 100)}k</span>
+                    </div>
+                    
+                    <div class="manga-tags">
+                        ${manga.tags.slice(0, 2).map(tag => `
+                            <span class="manga-tag">${tag}</span>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    toggleBookmark(mangaId) {
+        // Cari manga dari DOM
+        const card = document.querySelector(`[data-id="${mangaId}"]`);
+        const manga = {
+            id: mangaId,
+            title: card.querySelector('.manga-title').textContent,
+            cover: card.querySelector('.manga-image').src,
+            year: card.querySelector('.fa-calendar').parentNode.textContent.trim(),
+            tags: ['Action']
+        };
+        
+        if (State.isBookmarked(mangaId)) {
+            State.removeBookmark(mangaId);
+        } else {
+            State.addBookmark(manga);
+        }
+        
+        // Update icon
+        const bookmarkBtn = card.querySelector('.manga-bookmark');
+        bookmarkBtn.classList.toggle('active');
+        bookmarkBtn.innerHTML = `<i class="fas fa-${State.isBookmarked(mangaId) ? 'heart' : 'heart'}"></i>`;
+        
+        this.updateBookmarkBadge();
+    }
+    
+    updateBookmarkBadge() {
+        const count = State.getBookmarks().length;
+        const badge = document.getElementById('bookmark-count');
+        if (count > 0) {
+            badge.textContent = count > 9 ? '9+' : count;
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+    }
+    
+    setupEventListeners() {
+        // Search debounce
+        let timeout;
+        document.getElementById('search-input')?.addEventListener('input', (e) => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                const query = e.target.value.trim();
+                if (query.length >= 2) {
+                    this.searchManga(query);
+                }
+            }, 300);
+        });
+        
+        // Navigation links
+        document.querySelectorAll('[data-route]').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const route = link.getAttribute('data-route');
+                this.navigate(route);
+            });
+        });
+        
+        // Manga card clicks
+        document.addEventListener('click', (e) => {
+            const card = e.target.closest('.manga-card');
+            if (card && !e.target.closest('.manga-bookmark')) {
+                const id = card.dataset.id;
+                this.showMangaDetail(id);
+            }
+        });
+    }
+    
+    async searchManga(query) {
+        const main = document.getElementById('main-content');
+        const results = await API.searchManga(query);
+        
+        main.innerHTML = `
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-search"></i> Search: "${query}"
+                </h2>
+                <button class="view-all" onclick="app.loadHome()">← Back</button>
+            </div>
+            
+            <div class="manga-grid">
+                ${results.manga.map(m => this.renderMangaCard(m)).join('')}
+            </div>
+        `;
+    }
+    
+    async showMangaDetail(id) {
+        const main = document.getElementById('main-content');
+        const { manga, chapters } = await API.getMangaDetail(id);
+        
+        main.innerHTML = `
+            <button class="back-button" onclick="app.loadHome()">
+                <i class="fas fa-arrow-left"></i> Back to Home
+            </button>
+            
+            <div class="detail-card">
+                <div class="detail-layout">
+                    <div class="detail-cover">
+                        <img src="${manga.cover}" alt="${manga.title}">
+                    </div>
+                    
+                    <div class="detail-info">
+                        <h1 class="detail-title">${manga.title}</h1>
+                        
+                        <div class="detail-tags">
+                            ${manga.tags.slice(0, 5).map(tag => `
+                                <span class="detail-tag">${tag}</span>
+                            `).join('')}
+                        </div>
+                        
+                        <p class="detail-description">${manga.description || 'No description available.'}</p>
+                        
+                        <div class="detail-meta-grid">
+                            <div class="detail-meta-item">
+                                <div class="detail-meta-label">Year</div>
+                                <div class="detail-meta-value">${manga.year}</div>
+                            </div>
+                            <div class="detail-meta-item">
+                                <div class="detail-meta-label">Status</div>
+                                <div class="detail-meta-value">${manga.status}</div>
+                            </div>
+                            <div class="detail-meta-item">
+                                <div class="detail-meta-label">Rating</div>
+                                <div class="detail-meta-value">⭐ ${manga.rating}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="action-buttons">
+                            <button class="btn-primary" onclick="app.toggleBookmark('${manga.id}')">
+                                <i class="fas fa-${State.isBookmarked(manga.id) ? 'heart' : 'heart'}"></i>
+                                ${State.isBookmarked(manga.id) ? 'Bookmarked' : 'Bookmark'}
+                            </button>
+                            <button class="btn-secondary">
+                                <i class="fas fa-share-alt"></i> Share
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <h2 class="text-xl font-bold mt-8 mb-4">Chapters</h2>
+                <div class="chapter-list">
+                    ${chapters.map(ch => `
+                        <div class="chapter-item" onclick="app.showChapter('${ch.id}', '${manga.id}')">
+                            <div class="chapter-info">
+                                <h4>${ch.title}</h4>
+                                <div class="chapter-meta">
+                                    <span><i class="far fa-file-image"></i> ${ch.pages} pages</span>
+                                    <span><i class="far fa-calendar"></i> ${new Date(ch.published).toLocaleDateString()}</span>
+                                </div>
+                            </div>
+                            <i class="fas fa-chevron-right text-gray-400"></i>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    async showChapter(chapterId, mangaId) {
+        const main = document.getElementById('main-content');
+        const images = await API.getChapterImages(chapterId);
+        
+        main.innerHTML = `
+            <div class="reader-container">
+                <div class="reader-nav">
+                    <button class="back-button" onclick="app.showMangaDetail('${mangaId}')">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    <span>Page 1 / ${images.length}</span>
+                </div>
+                
+                <div id="chapter-images">
+                    ${images.map((img, i) => `
+                        <div class="reader-page">
+                            <img src="${img.url}" 
+                                 alt="Page ${i+1}"
+                                 loading="${i < 3 ? 'eager' : 'lazy'}"
+                                 onerror="this.src='https://via.placeholder.com/800x1200/2a2a2a/ec4899?text=Page+${i+1}'">
+                            <span class="page-number">${i+1}/${images.length}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+        
+        // Save progress
+        State.saveProgress(mangaId, chapterId, 1);
+    }
+    
+    navigate(route) {
+        // Update active class
+        document.querySelectorAll('.nav-link, .bottom-nav a').forEach(link => {
+            link.classList.toggle('active', link.getAttribute('data-route') === route);
+        });
+        
+        // Load content based on route
+        if (route === '/') this.loadHome();
+        else if (route === '/trending') this.loadTrending();
+        else if (route === '/popular') this.loadPopular();
+        else if (route === '/latest') this.loadLatest();
+        else if (route === '/bookmarks') this.loadBookmarks();
+        else if (route === '/history') this.loadHistory();
+        else if (route === '/settings') this.loadSettings();
+    }
+    
+    async loadTrending() {
+        const main = document.getElementById('main-content');
+        const trending = await API.getLatestManga(1);
+        
+        main.innerHTML = `
+            <h2 class="section-title mb-4"><i class="fas fa-fire"></i> Trending Now</h2>
+            <div class="manga-grid">
+                ${trending.manga.sort(() => Math.random() - 0.5).slice(0, 20).map(m => this.renderMangaCard(m)).join('')}
+            </div>
+        `;
+    }
+    
+    async loadPopular() {
+        const main = document.getElementById('main-content');
+        const popular = await API.getLatestManga(1);
+        
+        main.innerHTML = `
+            <h2 class="section-title mb-4"><i class="fas fa-star"></i> Most Popular</h2>
+            <div class="manga-grid">
+                ${popular.manga.sort(() => Math.random() - 0.5).slice(0, 20).map(m => this.renderMangaCard(m)).join('')}
+            </div>
+        `;
+    }
+    
+    async loadLatest() {
+        const main = document.getElementById('main-content');
+        const latest = await API.getLatestManga(1);
+        
+        main.innerHTML = `
+            <h2 class="section-title mb-4"><i class="fas fa-clock"></i> Latest Updates</h2>
+            <div class="manga-grid">
+                ${latest.manga.map(m => this.renderMangaCard(m)).join('')}
+            </div>
+        `;
+    }
+    
+    loadBookmarks() {
+        const main = document.getElementById('main-content');
+        const bookmarks = State.getBookmarks();
+        
+        if (bookmarks.length === 0) {
+            main.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-heart"></i>
+                    <h3>No Bookmarks Yet</h3>
+                    <p>Start adding manga to your bookmarks</p>
+                    <button class="btn-primary" onclick="app.navigate('/')">Browse Manga</button>
+                </div>
+            `;
+            return;
+        }
+        
+        main.innerHTML = `
+            <h2 class="section-title mb-4"><i class="fas fa-heart"></i> My Bookmarks</h2>
+            <div class="manga-grid">
+                ${bookmarks.map(m => this.renderMangaCard(m)).join('')}
+            </div>
+        `;
+    }
+    
+    loadHistory() {
+        const main = document.getElementById('main-content');
+        const history = State.getHistory();
+        
+        if (history.length === 0) {
+            main.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-clock"></i>
+                    <h3>No History</h3>
+                    <p>Start reading manga to see your history</p>
+                    <button class="btn-primary" onclick="app.navigate('/')">Browse Manga</button>
+                </div>
+            `;
+            return;
+        }
+        
+        main.innerHTML = `
+            <h2 class="section-title mb-4"><i class="fas fa-clock"></i> Reading History</h2>
+            <div class="space-y-3">
+                ${history.map(h => `
+                    <div class="history-item" onclick="app.showMangaDetail('${h.manga.id}')">
+                        <img src="${h.manga.cover}" class="history-cover">
+                        <div class="history-info">
+                            <h4>${h.manga.title}</h4>
+                            <div class="history-meta">
+                                <span>${h.chapter.title}</span>
+                                <span>•</span>
+                                <span>${new Date(h.readAt).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-right text-gray-400"></i>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+    
+    loadSettings() {
+        const main = document.getElementById('main-content');
+        
+        main.innerHTML = `
+            <div class="settings-container">
+                <h2 class="section-title mb-4"><i class="fas fa-cog"></i> Settings</h2>
+                
+                <div class="settings-group">
+                    <h3>Appearance</h3>
+                    <div class="settings-item">
+                        <span>Dark Mode</span>
+                        <label class="switch">
+                            <input type="checkbox" id="dark-mode" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="settings-group">
+                    <h3>Data Management</h3>
+                    <button class="settings-btn" onclick="API.clearCache()">
+                        <i class="fas fa-trash"></i> Clear Cache
+                    </button>
+                    <button class="settings-btn danger" onclick="State.clearAll()">
+                        <i class="fas fa-exclamation-triangle"></i> Clear All Data
+                    </button>
+                </div>
+                
+                <div class="settings-group">
+                    <h3>About</h3>
+                    <div class="settings-item">
+                        <span>Version</span>
+                        <span class="text-primary">${CONFIG.version}</span>
+                    </div>
+                    <div class="settings-item">
+                        <span>Source</span>
+                        <span>MangaDex API</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Dark mode toggle
+        document.getElementById('dark-mode')?.addEventListener('change', (e) => {
+            document.body.style.background = e.target.checked ? '#0B0E14' : '#ffffff';
+            document.body.style.color = e.target.checked ? '#ffffff' : '#000000';
+        });
+    }
+}
+
+// Start app
+document.addEventListener('DOMContentLoaded', () => {
+    window.app = new ClaraApp();
+});                </div>
             </nav>
             
             <!-- Main Content - Langsung diisi nanti -->
